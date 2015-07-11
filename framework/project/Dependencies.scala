@@ -172,27 +172,29 @@ object Dependencies {
   val sbtRcVersion = "0.3.1"
   val sbtCoreNextVersion = "0.1.1"
 
-  def forkRunProtocolDependencies(scalaBinaryVersion: String) = Seq(
-    sbtRcClient(scalaBinaryVersion)
+  def getOrComplainScalaVersion[T](scalaBinaryVersion: String)(f: String => Option[T]): Seq[T] =
+    (f(scalaBinaryVersion) orElse sys.error(s"Unsupported scala version: $scalaBinaryVersion")).toSeq
+
+  def forkRunProtocolDependencies(scalaBinaryVersion: String) = getOrComplainScalaVersion(scalaBinaryVersion)(
+    sbtRcClient
   ) ++ specsBuild.map(_ % "test")
 
   // use partial version so that non-standard scala binary versions from dbuild also work
-  def sbtRcClient(scalaBinaryVersion: String): ModuleID = CrossVersion.partialVersion(scalaBinaryVersion) match {
-    case Some((2, 10)) => "com.typesafe.sbtrc" % "client-2-10" % sbtRcVersion
-    case Some((2, 11)) => "com.typesafe.sbtrc" % "client-2-11" % sbtRcVersion
-    case _ => println(s"Unsupported scala version: $scalaBinaryVersion")
+  def sbtRcClient(scalaBinaryVersion: String): Option[ModuleID] = CrossVersion.partialVersion(scalaBinaryVersion) flatMap {
+    case (2, 10) => Some("com.typesafe.sbtrc" % "client-2-10" % sbtRcVersion)
+    case (2, 11 | 12) => Some("com.typesafe.sbtrc" % "client-2-11" % sbtRcVersion)
+    case _ => None
   }
 
-  def forkRunDependencies(scalaBinaryVersion: String) = Seq(
-    sbtRcActorClient(scalaBinaryVersion),
-    jnotify
-  )
+  def forkRunDependencies(scalaBinaryVersion: String) = getOrComplainScalaVersion(scalaBinaryVersion)(
+    sbtRcActorClient
+  ) :+ jnotify
 
   // use partial version so that non-standard scala binary versions from dbuild also work
-  def sbtRcActorClient(scalaBinaryVersion: String): ModuleID = CrossVersion.partialVersion(scalaBinaryVersion) match {
-    case Some((2, 10)) => "com.typesafe.sbtrc" % "actor-client-2-10" % sbtRcVersion
-    case Some((2, 11)) => "com.typesafe.sbtrc" % "actor-client-2-11" % sbtRcVersion
-    case _ => println(s"Unsupported scala version: $scalaBinaryVersion")
+  def sbtRcActorClient(scalaBinaryVersion: String): Option[ModuleID] = CrossVersion.partialVersion(scalaBinaryVersion) flatMap {
+    case (2, 10) => Some("com.typesafe.sbtrc" % "actor-client-2-10" % sbtRcVersion)
+    case (2, 11 | 12) => Some("com.typesafe.sbtrc" % "actor-client-2-11" % sbtRcVersion)
+    case _ => None
   }
 
   def sbtForkRunPluginDependencies(sbtVersion: String, scalaVersion: String) = Seq(
